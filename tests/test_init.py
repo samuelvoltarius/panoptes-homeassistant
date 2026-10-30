@@ -188,6 +188,19 @@ async def test_push(hass: HomeAssistant, panoptes: FakePanoptes, eintrag) -> Non
     await hass.config_entries.async_unload(eintrag.entry_id)
 
 
+async def test_zeitstempel_als_text(hass: HomeAssistant, panoptes: FakePanoptes, eintrag) -> None:
+    """Panoptes liefert Zeitstempel als Text; ohne Umwandlung legt HA den Sensor gar nicht an."""
+    feld = {"titel": "Zeit", "typ": "sensor", "deviceClass": "timestamp", "stateClass": None,
+            "einheit": None, "icon": None, "erweitert": False}
+    panoptes.zustand["felder"] += [{**feld, "key": "lock_changed_at"}, {**feld, "key": "kaputt_at", "titel": "Kaputt"}]
+    panoptes.zustand["telemetrie"]["lock_changed_at"] = "2026-10-30T17:00:27+01:00"
+    panoptes.zustand["telemetrie"]["kaputt_at"] = "keine Zeit"
+    await einrichten(hass, eintrag)
+    assert hass.states.get("sensor.dolphin_surf_zeit").state == "2026-10-30T16:00:27+00:00"
+    assert hass.states.get("sensor.dolphin_surf_kaputt").state == "unknown"
+    await hass.config_entries.async_unload(eintrag.entry_id)
+
+
 async def test_ereignis_wie_panoptes_0132(hass: HomeAssistant, panoptes: FakePanoptes, eintrag) -> None:
     """Das Auto schickt die Art in "art" und ab 0.1.30 die ereignisId; sie muss in HA ankommen."""
     await einrichten(hass, eintrag)

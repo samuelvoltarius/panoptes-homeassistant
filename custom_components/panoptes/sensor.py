@@ -13,6 +13,8 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from homeassistant.util import dt as dt_util
+
 from .const import F1_STUFEN, GESUNDHEIT_ZUSTAENDE, WAECHTER_ZUSTAENDE
 from .coordinator import PanoptesConfigEntry, PanoptesCoordinator
 from .entity import PanoptesEntity
@@ -94,6 +96,10 @@ class TelemetrieSensor(PanoptesEntity, SensorEntity):
             return None
         if isinstance(wert, bool) and self._attr_state_class is not None:
             return int(wert)
+        if self._attr_device_class is SensorDeviceClass.TIMESTAMP:
+            # Das Auto liefert Text; HA verlangt eine Zeit mit Zone, sonst bricht das Anlegen ab.
+            zeit = dt_util.parse_datetime(wert) if isinstance(wert, str) else None
+            return zeit if zeit is not None and zeit.tzinfo is not None else None
         return wert
 
 
