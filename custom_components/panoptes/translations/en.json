@@ -1,0 +1,209 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Panoptes",
+        "description": "How should your car talk to Home Assistant?",
+        "menu_options": {
+          "internet": "Over the internet (recommended) – works on mobile data too, 3 taps",
+          "direkt": "Direct – same Wi-Fi or Tailscale, live in both directions"
+        }
+      },
+      "direkt": {
+        "title": "Connect directly",
+        "description": "Enter the Panoptes address (shown next to the “Connect to Home Assistant” button), e.g. `100.64.0.10` or `http://192.168.0.50:8180`. You then allow the connection with one tap in Telegram or in Panoptes – no code to type.",
+        "data": {
+          "url": "Panoptes address"
+        }
+      },
+      "nur_lokal": {
+        "title": "Home Wi-Fi only",
+        "description": "This Home Assistant has no address reachable from the internet (neither Home Assistant Cloud/Nabu Casa nor an own external URL). Your car can then only send data while it is on your Wi-Fi ({adresse}). Nothing arrives on the road.\n\nFor on the road: enable Home Assistant Cloud or set an external URL under Settings → System → Network. Continue anyway?"
+      },
+      "zeroconf_confirm": {
+        "title": "Panoptes found",
+        "description": "“{name}” was found on your network ({url}). Connect now? Panoptes will then ask for your permission in Telegram or the Panoptes web UI."
+      },
+      "reauth_confirm": {
+        "title": "Reconnect",
+        "description": "The pairing with Panoptes ({url}) expired or was revoked. Connect again?"
+      },
+      "reconfigure": {
+        "title": "Change address",
+        "description": "New address of the same car (e.g. Tailscale instead of Wi-Fi). The pairing is kept.",
+        "data": {
+          "url": "Panoptes address"
+        }
+      }
+    },
+    "progress": {
+      "auto": "**1.** [Send to my Panoptes bot]({link}) – in Telegram pick the chat with your Panoptes bot.\n\n**2.** Panoptes asks you. Compare the check number: **{pruefzahl}**\n\n**3.** Tap **Allow**. Done – this window closes by itself.\n\nWithout Telegram: paste this text in Panoptes → System → Home Assistant:\n\n`{text}`\n\nValid until {bis}.",
+      "freigabe": "Now tap **Allow** in **Telegram** or in **Panoptes → Paired devices**.\n\nCheck number: **{pruefzahl}**\n\nCompare the number – it must match exactly. Device: “{geraet}”. The request is valid for 2 minutes."
+    },
+    "error": {
+      "ungueltige_adresse": "Invalid address.",
+      "nicht_erreichbar": "Panoptes is not reachable. Same Wi-Fi or Tailscale? Is the car awake?",
+      "zu_viele_anfragen": "Too many open requests. Please wait 2 minutes.",
+      "panoptes_zu_alt": "This Panoptes version does not support the Home Assistant interface yet. Please update Panoptes.",
+      "anderes_auto": "A different car (or no Panoptes) answers at this address.",
+      "unbekannt": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This car is already set up.",
+      "abgelehnt": "The connection was declined in Panoptes.",
+      "abgelaufen": "The request expired (2 minutes). Please try again.",
+      "schon_abgeholt": "This approval was already used. Please try again.",
+      "nicht_erreichbar": "Panoptes was not reachable during approval.",
+      "panoptes_zu_alt": "This Panoptes version does not support the Home Assistant interface yet. Please update Panoptes.",
+      "anderes_auto": "A different car answers at this address.",
+      "keine_adresse": "Home Assistant does not know its own address. Please set it under Settings → System → Network.",
+      "keine_kennung": "Panoptes did not announce an id.",
+      "reauth_successful": "Reconnected.",
+      "reconfigure_successful": "Address changed.",
+      "unbekannt": "Unexpected error."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Panoptes",
+        "data": {
+          "position": "Position as device tracker",
+          "einstellungen": "Panoptes settings as entities"
+        },
+        "data_description": {
+          "position": "Only works if “Share position with Home Assistant” is also enabled in Panoptes.",
+          "einstellungen": "Stored Panoptes settings only. Vehicle commands (climate, locks, lights, horn, windows) are deliberately not available. Access settings stay read-only."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "waechter": {
+        "name": "Guardian",
+        "state": {
+          "scharf": "Armed",
+          "aus": "Off",
+          "startet": "Starting",
+          "pausiert": "Paused",
+          "fehler": "Error"
+        }
+      },
+      "gesundheit": {
+        "name": "Health",
+        "state": {
+          "ok": "OK",
+          "warnung": "Warning",
+          "fehler": "Error"
+        }
+      },
+      "f1": {
+        "name": "Will it make it?",
+        "state": {
+          "reicht": "Enough",
+          "knapp": "Tight",
+          "reicht_nicht": "Not enough",
+          "keine_route": "No route",
+          "unbekannt": "Unknown"
+        }
+      },
+      "app_version": {
+        "name": "Panoptes version"
+      }
+    },
+    "binary_sensor": {
+      "push": {
+        "name": "Live connection"
+      }
+    },
+    "switch": {
+      "waechter_schalter": {
+        "name": "Guardian"
+      }
+    },
+    "button": {
+      "regel": {
+        "name": "Rule {name}"
+      }
+    },
+    "event": {
+      "ereignis_fahrt": {
+        "name": "Arrival/departure",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "ankunft": "Arrival",
+              "abfahrt": "Departure"
+            }
+          }
+        }
+      },
+      "ereignis_waechter": {
+        "name": "Guardian event",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "bewegung": "Motion",
+              "person": "Person",
+              "erschuetterung": "Impact"
+            }
+          }
+        }
+      }
+    },
+    "device_tracker": {
+      "position": {
+        "name": "Position"
+      }
+    }
+  },
+  "exceptions": {
+    "aktion_fehlgeschlagen": {
+      "message": "Panoptes rejected the action: {grund}"
+    },
+    "einstellung_abgelehnt": {
+      "message": "Panoptes did not save the setting: {grund}"
+    },
+    "eintrag_unbekannt": {
+      "message": "Unknown Panoptes entry."
+    },
+    "eintrag_nicht_geladen": {
+      "message": "Panoptes is not connected right now."
+    },
+    "regel_nicht_ausloesbar": {
+      "message": "This rule contains a vehicle action and cannot be triggered from Home Assistant."
+    }
+  },
+  "services": {
+    "ruhezeit": {
+      "name": "Telegram quiet time",
+      "description": "Mute Panoptes Telegram messages for a while (0 = end).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Car",
+          "description": "Which Panoptes."
+        },
+        "minuten": {
+          "name": "Minutes",
+          "description": "Duration, at most 1440."
+        }
+      }
+    },
+    "regel_ausfuehren": {
+      "name": "Run rule",
+      "description": "Run a Panoptes rule. Rules with a vehicle action are blocked.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Car",
+          "description": "Which Panoptes."
+        },
+        "regel_id": {
+          "name": "Rule id",
+          "description": "Rule id."
+        }
+      }
+    }
+  }
+}

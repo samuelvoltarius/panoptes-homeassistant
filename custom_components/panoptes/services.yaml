@@ -1,0 +1,28 @@
+ruhezeit:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: panoptes
+    minuten:
+      required: true
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 1440
+          unit_of_measurement: min
+          mode: box
+
+regel_ausfuehren:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: panoptes
+    regel_id:
+      required: true
+      selector:
+        text:

@@ -1,0 +1,36 @@
+name: Prüfen
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    # Die HACS-Prüfung kann nur öffentliche Repositories prüfen.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@main
+        with:
+          category: integration
+          # Privates Repo/ohne Marken-Eintrag: diese Prüfungen erst bei Veröffentlichung.
+          ignore: brands topics description
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv -p 3.14 .venv
+      - run: uv pip install --python .venv -r requirements_test.txt
+      - run: .venv/bin/python -m pytest -q
