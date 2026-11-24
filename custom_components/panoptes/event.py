@@ -1,4 +1,4 @@
-"""Ereignis-Entitäten: Ankunft/Abfahrt (H5) und Wächter-Ereignisse (nur Art + Zeit)."""
+"""Ereignis-Entitäten: Ankunft/Abfahrt (H5), Wächter-Ereignisse (nur Art + Zeit), Meldungen des Autos."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import FAHRT_EREIGNISSE, SIGNAL_EREIGNIS, WAECHTER_EREIGNISSE
+from .const import FAHRT_EREIGNISSE, MELDUNG_EREIGNISSE, SIGNAL_EREIGNIS, WAECHTER_EREIGNISSE
 from .coordinator import PanoptesConfigEntry, PanoptesCoordinator
 from .entity import PanoptesEntity
 
@@ -20,12 +20,14 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(
-        [
-            PanoptesEreignis(coordinator, "fahrt", FAHRT_EREIGNISSE, "mdi:car-arrow-right"),
-            PanoptesEreignis(coordinator, "waechter", WAECHTER_EREIGNISSE, "mdi:cctv"),
-        ]
-    )
+    ereignisse = [
+        PanoptesEreignis(coordinator, "fahrt", FAHRT_EREIGNISSE, "mdi:car-arrow-right"),
+        PanoptesEreignis(coordinator, "waechter", WAECHTER_EREIGNISSE, "mdi:cctv"),
+    ]
+    if coordinator.modus == "direkt":
+        # Ab Panoptes 0.1.43.21 aus /api/ha/v1/daten (meldungen.verlauf): Meldung des Autos kommt/geht.
+        ereignisse.append(PanoptesEreignis(coordinator, "meldung", MELDUNG_EREIGNISSE, "mdi:car-info"))
+    async_add_entities(ereignisse)
 
 
 class PanoptesEreignis(PanoptesEntity, EventEntity):

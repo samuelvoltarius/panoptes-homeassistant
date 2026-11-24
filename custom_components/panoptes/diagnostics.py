@@ -26,6 +26,12 @@ async def async_get_config_entry_diagnostics(
         "offene_auftraege": [a.get("typ") for a in getattr(c, "auftraege", {}).values()],
         "zustand": async_redact_data(c.data.zustand, SCHWAERZEN),
         "einstellungen_anzahl": len(c.data.werte),
+        # /api/ha/v1/daten: nur welche Blöcke lesbar sind, keine Werte
+        "daten_bloecke": (
+            None
+            if c.data.daten is None
+            else {k: isinstance(v, dict) for k, v in c.data.daten.items() if k not in ("version", "stand")}
+        ),
         "regeln": [
             {"ausloesbar": r.get("ausloesbar"), "grund": r.get("grund")} for r in c.data.regeln
         ],

@@ -15,8 +15,16 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from homeassistant.util import dt as dt_util
 
-from .const import F1_STUFEN, GESUNDHEIT_ZUSTAENDE, WAECHTER_ZUSTAENDE
+from .const import (
+    F1_STUFEN,
+    FELD_VERBRAUCH_50KM,
+    GANG_WERTE,
+    GESUNDHEIT_ZUSTAENDE,
+    VERBRAUCH_50KM_BEREICH,
+    WAECHTER_ZUSTAENDE,
+)
 from .coordinator import PanoptesConfigEntry, PanoptesCoordinator
+from .daten import DATEN_SENSOREN, DatenSensor
 from .entity import PanoptesEntity
 
 # Ortsdaten nie als Sensor – Position gibt es nur als device_tracker mit doppelter Zustimmung.
@@ -71,6 +79,20 @@ async def async_setup_entry(
     neue_felder()
     entry.async_on_unload(coordinator.async_add_listener(neue_felder))
 
+    # Ab Panoptes 0.1.43.21 (/api/ha/v1/daten, nur Modus „Direkt“): erst anlegen, wenn die Antwort einmal da war.
+    daten_angelegt = False
+
+    @callback
+    def daten_sensoren() -> None:
+        nonlocal daten_angelegt
+        if daten_angelegt or coordinator.data.daten is None:
+            return
+        daten_angelegt = True
+        async_add_entities(DatenSensor(coordinator, b) for b in DATEN_SENSOREN)
+
+    daten_sensoren()
+    entry.async_on_unload(coordinator.async_add_listener(daten_sensoren))
+
 
 class TelemetrieSensor(PanoptesEntity, SensorEntity):
     """Ein Wert aus der Telemetrie (gleiche Schlüssel wie MQTT)."""
@@ -84,6 +106,15 @@ class TelemetrieSensor(PanoptesEntity, SensorEntity):
         self._attr_native_unit_of_measurement = feld.get("einheit") or None
         self._attr_icon = feld.get("icon") or None
         self._attr_entity_registry_enabled_default = not feld.get("erweitert", False)
+        if self._key == "gear":
+            # Ab 0.1.43.21 nur P/R/N/D oder null (nie UNKNOWN) → Auswahl-Sensor, alles andere unbekannt.
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = list(GANG_WERTE)
+            self._attr_state_class = None
+            self._attr_native_unit_of_measurement = None
+        elif self._key == "odometer":
+            # Panoptes liefert den Kilometerstand nie kleiner (Höchstwert bleibt) → Gesamtzähler.
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
 
     @property
     def available(self) -> bool:
@@ -96,6 +127,13 @@ class TelemetrieSensor(PanoptesEntity, SensorEntity):
             return None
         if isinstance(wert, bool) and self._attr_state_class is not None:
             return int(wert)
+        if self._key == "gear":
+            return wert if wert in GANG_WERTE else None
+        if self._key == FELD_VERBRAUCH_50KM:
+            # Ältere Panoptes schicken unplausible Rohwerte (z. B. 309,6) → unbekannt statt falsch.
+            unten, oben = VERBRAUCH_50KM_BEREICH
+            ok = isinstance(wert, (int, float)) and not isinstance(wert, bool) and unten <= wert <= oben
+            return wert if ok else None
         if self._attr_device_class is SensorDeviceClass.TIMESTAMP:
             # Das Auto liefert Text; HA verlangt eine Zeit mit Zone, sonst bricht das Anlegen ab.
             zeit = dt_util.parse_datetime(wert) if isinstance(wert, str) else None

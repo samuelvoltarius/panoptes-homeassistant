@@ -29,10 +29,13 @@ from .api import (
 )
 from .const import (
     CONF_TOKEN,
+    DATEN_ABRUF,
+    DATEN_FEHLT_NEU_FRAGEN,
     DOMAIN,
     ERLAUBTE_AKTIONEN,
     EVENT_ABFAHRT,
     EVENT_ANKUNFT,
+    EVENT_MELDUNG,
     EVENT_WAECHTER,
     MQTT_DISCOVERY_AUS,
     OPT_EINSTELLUNGEN,
@@ -57,6 +60,15 @@ class PanoptesDaten:
     werte: dict[str, Any] = field(default_factory=dict)
     werte_etag: str | None = None
     regeln: list[dict[str, Any]] = field(default_factory=list)
+    # GET /api/ha/v1/daten (ab Panoptes 0.1.43.21); None = noch nie gelesen oder Panoptes zu alt.
+    daten: dict[str, Any] | None = None
+
+    def block(self, name: str) -> dict[str, Any] | None:
+        """Ein Block aus ``daten`` (laden, ersparnis, clips, meldungen, byd_verbrauch); None = gerade nicht lesbar."""
+        if not isinstance(self.daten, dict):
+            return None
+        b = self.daten.get(name)
+        return b if isinstance(b, dict) else None
 
     @property
     def telemetrie(self) -> dict[str, Any]:
@@ -166,6 +178,10 @@ class PanoptesCoordinator(PanoptesBasis):
         self.push_aktiv = False
         self.push_unterstuetzt = True
         self._regeln_geladen: datetime | None = None
+        self._daten_geladen: datetime | None = None
+        self._daten_fehlt_seit: datetime | None = None
+        # Schon gemeldete Wechsel aus meldungen.verlauf; None = erster Abruf (dann nichts auslösen).
+        self._meldungen_gesehen: set[tuple[Any, ...]] | None = None
         self._sprache = hass.config.language
 
     @property
@@ -194,11 +210,67 @@ class PanoptesCoordinator(PanoptesBasis):
                 except PanoptesNichtVorhanden:
                     regeln = []
                 self._regeln_geladen = jetzt
+            daten = await self._daten_holen(alt.daten, jetzt)
         except PanoptesAnmeldungFehlt as err:
             raise ConfigEntryAuthFailed("Kopplung widerrufen oder abgelaufen") from err
         except PanoptesFehler as err:
             raise UpdateFailed(f"Panoptes nicht erreichbar: {err.grund}") from err
-        return PanoptesDaten(zustand=zustand, schema=schema, werte=werte, werte_etag=etag, regeln=regeln)
+        return PanoptesDaten(
+            zustand=zustand, schema=schema, werte=werte, werte_etag=etag, regeln=regeln, daten=daten
+        )
+
+    async def _daten_holen(self, alt: dict[str, Any] | None, jetzt: datetime) -> dict[str, Any] | None:
+        """/daten höchstens alle 60 s; nur nach erfolgreichem Zustand (Auto erreichbar).
+
+        Ein Fehler hier reißt den Zustand nicht mit: Der letzte Stand bleibt, Blöcke mit null → Entität unbekannt.
+        """
+        if self._daten_fehlt_seit is not None and jetzt - self._daten_fehlt_seit < DATEN_FEHLT_NEU_FRAGEN:
+            return None
+        if self._daten_geladen is not None and jetzt - self._daten_geladen < DATEN_ABRUF:
+            return alt
+        try:
+            neu = await self.api.daten()
+        except PanoptesNichtVorhanden:
+            _LOGGER.debug("Panoptes kennt /api/ha/v1/daten noch nicht (vor 0.1.43.21)")
+            self._daten_fehlt_seit = jetzt
+            return None
+        except PanoptesAnmeldungFehlt:
+            raise
+        except PanoptesFehler as err:
+            _LOGGER.debug("/daten nicht gelesen (%s), behalte den letzten Stand", err.grund)
+            return alt
+        self._daten_fehlt_seit = None
+        self._daten_geladen = jetzt
+        self._meldungen_auswerten(neu.get("meldungen"))
+        return neu
+
+    @callback
+    def _meldungen_auswerten(self, meldungen: Any) -> None:
+        """Neue Einträge in meldungen.verlauf als Ereignis „Meldung des Autos“ (kommt/geht)."""
+        if not isinstance(meldungen, dict) or not isinstance(meldungen.get("verlauf"), list):
+            return
+        eintraege = [e for e in meldungen["verlauf"] if isinstance(e, dict) and e.get("ereignis") in ("kommt", "geht")]
+        schluessel = [(e.get("zeit"), e.get("code"), e.get("schluessel"), e.get("ereignis")) for e in eintraege]
+        erster = self._meldungen_gesehen is None
+        gesehen = self._meldungen_gesehen or set()
+        if not erster:
+            eintrag_id = self.config_entry.entry_id
+            # Verlauf: neueste zuerst → in zeitlicher Reihenfolge melden.
+            for e, k in reversed(list(zip(eintraege, schluessel, strict=True))):
+                if k in gesehen:
+                    continue
+                nutzlast = {
+                    "zeit": e.get("zeit"),
+                    "code": e.get("code"),
+                    "schluessel": e.get("schluessel"),
+                    "text": e.get("text"),
+                }
+                self.hass.bus.async_fire(
+                    EVENT_MELDUNG, {"config_entry_id": eintrag_id, "ereignis": e["ereignis"], **nutzlast}
+                )
+                async_dispatcher_send(self.hass, SIGNAL_EREIGNIS.format(eintrag_id), "meldung", e["ereignis"], nutzlast)
+        # Verlauf hat höchstens 20 Einträge: nur die aktuell sichtbaren merken.
+        self._meldungen_gesehen = set(schluessel)
 
     # ------------------------------------------------------------------ Push
     async def push_schleife(self) -> None:

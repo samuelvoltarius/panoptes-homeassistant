@@ -46,6 +46,10 @@ POLL_OHNE_PUSH: Final = timedelta(seconds=30)
 POLL_MIT_PUSH: Final = timedelta(minutes=5)
 SITZUNG_ERNEUERN: Final = timedelta(hours=24)
 REGELN_NEU_LADEN: Final = timedelta(minutes=15)
+# Panoptes 0.1.43.21: GET /api/ha/v1/daten (Ladekosten, Ersparnis, Clips, Meldungen). Der Server rechnet höchstens
+# alle 30 s neu, 60 s reichen. Ältere Panoptes kennen den Endpunkt nicht (404) → stündlich erneut fragen.
+DATEN_ABRUF: Final = timedelta(seconds=60)
+DATEN_FEHLT_NEU_FRAGEN: Final = timedelta(hours=1)
 
 KOPPLUNG_ART: Final = "homeassistant"
 KOPPLUNG_ABFRAGE_STANDARD_S: Final = 2.0
@@ -73,10 +77,17 @@ WAECHTER_ZUSTAENDE: Final = ["scharf", "aus", "startet", "pausiert", "fehler"]
 GESUNDHEIT_ZUSTAENDE: Final = ["ok", "warnung", "fehler"]
 F1_STUFEN: Final = ["reicht", "knapp", "reicht_nicht", "keine_route", "unbekannt"]
 FAHRT_EREIGNISSE: Final = ["ankunft", "abfahrt"]
+MELDUNG_EREIGNISSE: Final = ["kommt", "geht"]
+# Ab Panoptes 0.1.43.21 nur noch diese Werte (nie UNKNOWN); alles andere → unbekannt.
+GANG_WERTE: Final = ["P", "R", "N", "D"]
+# kWh/100 km laut BYD: außerhalb dieses Bereichs ist der Rohwert unbrauchbar (z. B. 309,6) → unbekannt.
+VERBRAUCH_50KM_BEREICH: Final = (5.0, 60.0)
+FELD_VERBRAUCH_50KM: Final = "consumption_50km"
 WAECHTER_EREIGNISSE: Final = ["bewegung", "person", "erschuetterung"]
 
 EVENT_ANKUNFT: Final = f"{DOMAIN}_ankunft"
 EVENT_ABFAHRT: Final = f"{DOMAIN}_abfahrt"
 EVENT_WAECHTER: Final = f"{DOMAIN}_waechter_ereignis"
+EVENT_MELDUNG: Final = f"{DOMAIN}_meldung"
 
 SIGNAL_EREIGNIS: Final = f"{DOMAIN}_ereignis_{{}}"

@@ -201,6 +201,14 @@ class PanoptesApi:
         _, daten = await self._anfrage("GET", "/api/ha/v1/zustand", params=params or None)
         return daten
 
+    async def daten(self) -> dict[str, Any]:
+        """Ab Panoptes 0.1.43.21: Ladekosten, Ersparnis (Schätzung), Clips (nur Zähler), Meldungen, BYD-Summen.
+
+        Nur lesend. Ältere Versionen antworten mit 404 (``PanoptesNichtVorhanden``).
+        """
+        _, daten = await self._anfrage("GET", "/api/ha/v1/daten")
+        return daten if isinstance(daten, dict) else {}
+
     async def regeln(self) -> list[dict[str, Any]]:
         _, daten = await self._anfrage("GET", "/api/ha/v1/regeln")
         regeln = daten.get("regeln")

@@ -111,6 +111,51 @@
       },
       "app_version": {
         "name": "Panoptes-Version"
+      },
+      "ladekosten_letzte": {
+        "name": "Ladekosten letzte Ladung"
+      },
+      "ladekosten_monat": {
+        "name": "Ladekosten Monat"
+      },
+      "ladekosten_jahr": {
+        "name": "Ladekosten Jahr"
+      },
+      "geladen_monat": {
+        "name": "Geladen Monat"
+      },
+      "geladen_jahr": {
+        "name": "Geladen Jahr"
+      },
+      "ersparnis_monat": {
+        "name": "Ersparnis Monat (Schätzung)"
+      },
+      "ersparnis_jahr": {
+        "name": "Ersparnis Jahr (Schätzung)"
+      },
+      "ersparnis_gesamt": {
+        "name": "Ersparnis gesamt (Schätzung)"
+      },
+      "byd_verbrauch_monat": {
+        "name": "Verbrauch laut BYD Monat"
+      },
+      "byd_verbrauch_jahr": {
+        "name": "Verbrauch laut BYD Jahr"
+      },
+      "clips_gesamt": {
+        "name": "Dashcam-Clips"
+      },
+      "clips_heute": {
+        "name": "Dashcam-Clips heute"
+      },
+      "clips_behalten": {
+        "name": "Dashcam-Clips behalten"
+      },
+      "clip_letzter": {
+        "name": "Letzter Dashcam-Clip"
+      },
+      "meldungen": {
+        "name": "Meldungen des Autos"
       }
     },
     "binary_sensor": {
@@ -148,6 +193,17 @@
               "bewegung": "Bewegung",
               "person": "Person",
               "erschuetterung": "Erschütterung"
+            }
+          }
+        }
+      },
+      "ereignis_meldung": {
+        "name": "Meldung des Autos",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "kommt": "Kommt",
+              "geht": "Geht"
             }
           }
         }

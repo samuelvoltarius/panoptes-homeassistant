@@ -15,6 +15,21 @@ Du gibst die Adresse ein, vergleichst eine Prüfzahl und tippst in Panoptes auf 
   Sie kommen auch als HA-Events: `panoptes_ankunft`, `panoptes_abfahrt`, `panoptes_waechter_ereignis`
 - **Position** als `device_tracker` nur, wenn du sie zweimal erlaubst: in Panoptes („Position mit Home Assistant teilen“)
   **und** in den Optionen der Integration. Standard ist aus.
+- **Gang** als Auswahl P, R, N, D. Ist er nicht bekannt, steht „unbekannt“ da. **Kilometerstand** als Gesamtzähler
+  (`total_increasing`), passend für die Langzeitstatistik.
+
+**Ab Panoptes 0.1.43.21** (nur im Modus „Direkt“; einmal je Minute abgefragt, nur lesend)
+- **Ladekosten** der letzten Ladung, im laufenden Monat und im laufenden Jahr, dazu **geladene kWh** je Monat und Jahr.
+  Fehlt bei einer Ladung der Preis, zählt sie nie als 0 €: Das Attribut `vollstaendig` steht dann auf `false`, und ohne
+  irgendeinen Preis bleibt der Wert „unbekannt“.
+- **Ersparnis** gegenüber Benzin oder Diesel je Monat, Jahr und gesamt. Das ist **immer eine Schätzung**: Der Name sagt es,
+  dazu kommen das Attribut `schaetzung: true` und der Hinweis aus Panoptes. Sie hängt von deinen eingetragenen Preisen und
+  dem Vergleichsverbrauch ab. Beim Plug-in-Hybrid gibt es keinen Wert.
+- **Dashcam-Clips**: Anzahl gesamt, heute und behalten sowie der Zeitpunkt des letzten Clips mit Auslöser. Es sind nur
+  Zahlen und Zeiten, kein Bild, kein Video, kein Dateiname und kein Ort.
+- **Meldungen des Autos**: Anzahl mit Liste als Attribut und die Ereignis-Entität „Meldung des Autos“ (kommt/geht), auch als
+  HA-Event `panoptes_meldung`. Gibt dein Auto keine Meldungen heraus, steht „unbekannt“ da, nicht „0“.
+- **Verbrauch laut BYD** (kWh/100 km) je Monat und Jahr, nur Summen aus dem Fahrtenbuch, keine einzelne Fahrt.
 
 **Von Home Assistant ins Auto** (nur Panoptes-eigene Funktionen)
 - Schalter **Wächter** an/aus
@@ -32,7 +47,7 @@ Du gibst die Adresse ein, vergleichst eine Prüfzahl und tippst in Panoptes auf 
 
 ## Voraussetzungen
 - Home Assistant **2025.2** oder neuer
-- Panoptes **0.1.32** oder neuer
+- Panoptes **0.1.32** oder neuer (Ladekosten, Ersparnis, Clips, Meldungen und BYD-Verbrauch ab **0.1.43.21**)
 - Home Assistant erreicht das Auto auf Port **8180**: gleiches WLAN oder gleiches Tailnet (Panoptes-Fernzugang)
 
 **Unterwegs im Mobilfunk** geht es nur über Tailscale. Dass das Auto selbst über das Internet an Home Assistant sendet, kann

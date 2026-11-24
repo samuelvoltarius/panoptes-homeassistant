@@ -77,6 +77,46 @@ SCHEMA: dict[str, Any] = {
     ],
 }
 
+# GET /api/ha/v1/daten nach docs/API_FUER_HA.md (Panoptes 0.1.43.21). Erfundene Werte, kein echtes Auto.
+MAI_2026 = 1777593600000  # 2026-05-01 00:00 UTC
+JAN_2026 = 1767225600000  # 2026-01-01 00:00 UTC
+DATEN: dict[str, Any] = {
+    "version": 1,
+    "stand": 1779000000000,
+    "laden": {
+        "waehrung": "EUR",
+        "letzte": {"start": 1778990000000, "ende": 1778995000000, "dc": False, "kwh": 20.0,
+                   "kwh_abgerechnet": 22.0, "kosten": 6.6, "preis_kwh": 0.3, "waehrung": "EUR"},
+        "monat": {"von": MAI_2026, "bis": 1779000000000, "ladungen": 4, "kwh": 80.0, "kwh_abgerechnet": 88.0,
+                  "kosten": 21.5, "preis_kwh": 0.31, "ladungen_ohne_preis": 1, "vollstaendig": False, "waehrung": "EUR"},
+        "jahr": {"von": JAN_2026, "bis": 1779000000000, "ladungen": 40, "kwh": 800.0, "kwh_abgerechnet": 880.0,
+                 "kosten": None, "preis_kwh": None, "ladungen_ohne_preis": 40, "vollstaendig": False, "waehrung": "EUR"},
+    },
+    "ersparnis": {
+        "schaetzung": True,
+        "hinweis": "Schätzung – hängt von deinen eingetragenen Preisen und dem Vergleichsverbrauch ab.",
+        "hinweis_schluessel": "ersparnis.schaetzung",
+        "verfuegbar": True,
+        "vergleichsauto": {"kraftstoff": "benzin", "verbrauch_l_100km": 6.5, "preis_l": 1.65,
+                           "preis_richtwert": True, "waehrung": "EUR"},
+        "monat": {"ersparnis": 42.3, "km": 900, "strom_kosten": 54.2, "sprit_kosten": 96.5, "vollstaendig": False, "grund": None},
+        "jahr": {"ersparnis": None, "km": 30, "strom_kosten": None, "sprit_kosten": None, "vollstaendig": False, "grund": "zu_wenig_km"},
+        "gesamt": None,
+    },
+    "clips": {"anzahl": 12, "heute": 2, "behalten": 3,
+              "letzter": {"zeit": 1778999000000, "grund": "stoss", "dauer_s": 30, "behalten": False}},
+    "meldungen": {
+        "verfuegbar": True,
+        "anzahl": 1,
+        "liste": [{"zeit": 1778990000000, "code": 13, "schluessel": "reifendruck", "text": "Reifendruck prüfen"}],
+        "verlauf": [],
+        "stand": 1779000000000,
+    },
+    "byd_verbrauch": {"verfuegbar": True,
+                      "monat": {"fahrten": 31, "km": 900.4, "kwh": 135.1, "kwh_je_100km": 15.0},
+                      "jahr": {"fahrten": 0, "km": 0.4, "kwh": 0.1, "kwh_je_100km": None}},
+}
+
 REGELN = [
     {"id": "r-garage", "name": "Garage", "ausloesbar": True, "grund": None},
     {"id": "r-klima", "name": "Vorklimatisieren", "ausloesbar": False, "grund": "fahrzeugaktion"},
@@ -104,6 +144,8 @@ class FakePanoptes:
         self.gueltige_tokens = {TOKEN}
         self.mit_sse = True
         self.mit_ha_api = True
+        self.daten: dict[str, Any] | None = copy.deepcopy(DATEN)  # None = Panoptes vor 0.1.43.21 (404)
+        self.daten_status = 200
         self.ereignisse: asyncio.Queue[str | None] = asyncio.Queue()
         self.sse_offen = 0
         self.widerrufen: list[str] = []
@@ -135,6 +177,7 @@ class FakePanoptes:
         r.add_post("/api/sitzung/abmelden", self.selbst_widerrufen)
         r.add_post("/api/sitzung/erneuern", self.erneuern)
         r.add_get("/api/ha/v1/zustand", self.get_zustand)
+        r.add_get("/api/ha/v1/daten", self.get_daten)
         r.add_get("/api/ha/v1/ereignisse", self.sse)
         r.add_get("/api/ha/v1/regeln", self.get_regeln)
         r.add_post("/api/ha/v1/aktion", self.aktion)
@@ -183,6 +226,15 @@ class FakePanoptes:
         if request.query.get("position") == "1":
             daten["position"] = {"lat": 48.2, "lon": 16.37, "genauigkeitM": 8, "zeit": 1}
         return web.json_response(daten)
+
+    async def get_daten(self, request: web.Request) -> web.Response:
+        if self.daten is None:
+            return web.json_response({"error": "not found"}, status=404)
+        if not self._auth(request):
+            return web.json_response({"grund": "token"}, status=401)
+        if self.daten_status != 200:
+            return web.json_response({"grund": "kaputt"}, status=self.daten_status)
+        return web.json_response(copy.deepcopy(self.daten))
 
     async def sse(self, request: web.Request) -> web.StreamResponse:
         if not self.mit_sse:
